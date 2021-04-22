@@ -17,31 +17,25 @@ package org.springframework.data.mongodb.core.convert;
 
 import static org.springframework.util.ReflectionUtils.*;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
-import com.mongodb.DBRef;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.cglib.proxy.Callback;
 import org.springframework.cglib.proxy.Enhancer;
 import org.springframework.cglib.proxy.Factory;
 import org.springframework.cglib.proxy.MethodProxy;
-import org.springframework.dao.DataAccessException;
-import org.springframework.dao.support.PersistenceExceptionTranslator;
-import org.springframework.data.mongodb.ClientSessionException;
-import org.springframework.data.mongodb.LazyLoadingException;
 import org.springframework.data.mongodb.core.convert.ReferenceResolver.ReferenceContext;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
-import org.springframework.data.util.Streamable;
 import org.springframework.objenesis.ObjenesisStd;
 import org.springframework.util.ReflectionUtils;
 
@@ -59,7 +53,8 @@ class LazyLoadingProxyGenerator {
 		this.objenesis = new ObjenesisStd(true);
 	}
 
-	public Object createLazyLoadingProxy(MongoPersistentProperty property, Object source,  BiFunction<ReferenceContext, Bson, Streamable<Document>> lookupFunction) {
+	public Object createLazyLoadingProxy(MongoPersistentProperty property, Object source,
+			BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
 
 		Class<?> propertyType = property.getType();
 		LazyLoadingInterceptor interceptor = new LazyLoadingInterceptor(property, source, referenceReader, lookupFunction);
@@ -82,7 +77,7 @@ class LazyLoadingProxyGenerator {
 		proxyFactory.addInterface(propertyType);
 		proxyFactory.addAdvice(interceptor);
 
-		return  proxyFactory.getProxy(LazyLoadingProxy.class.getClassLoader());
+		return proxyFactory.getProxy(LazyLoadingProxy.class.getClassLoader());
 	}
 
 	/**
@@ -101,17 +96,15 @@ class LazyLoadingProxyGenerator {
 		return enhancer.createClass();
 	}
 
-
 	public static class LazyLoadingInterceptor
 			implements MethodInterceptor, org.springframework.cglib.proxy.MethodInterceptor, Serializable {
-
 
 		private final ReferenceReader referenceReader;
 		MongoPersistentProperty property;
 		private volatile boolean resolved;
 		private @org.springframework.lang.Nullable Object result;
 		private Object source;
-		private BiFunction<ReferenceContext, Bson, Streamable<Document>> lookupFunction;
+		private BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction;
 
 		private final Method INITIALIZE_METHOD, TO_DBREF_METHOD, FINALIZE_METHOD;
 
@@ -125,7 +118,8 @@ class LazyLoadingProxyGenerator {
 			}
 		}
 
-		public LazyLoadingInterceptor(MongoPersistentProperty property, Object source, ReferenceReader reader, BiFunction<ReferenceContext, Bson, Streamable<Document>> lookupFunction) {
+		public LazyLoadingInterceptor(MongoPersistentProperty property, Object source, ReferenceReader reader,
+				BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
 
 			this.property = property;
 			this.source = source;
@@ -226,32 +220,32 @@ class LazyLoadingProxyGenerator {
 
 			if (resolved) {
 
-//				if (LOGGER.isTraceEnabled()) {
-//					LOGGER.trace("Accessing already resolved lazy loading property {}.{}",
-//							property.getOwner() != null ? property.getOwner().getName() : "unknown", property.getName());
-//				}
+				// if (LOGGER.isTraceEnabled()) {
+				// LOGGER.trace("Accessing already resolved lazy loading property {}.{}",
+				// property.getOwner() != null ? property.getOwner().getName() : "unknown", property.getName());
+				// }
 				return result;
 			}
 
 			try {
-//				if (LOGGER.isTraceEnabled()) {
-//					LOGGER.trace("Resolving lazy loading property {}.{}",
-//							property.getOwner() != null ? property.getOwner().getName() : "unknown", property.getName());
-//				}
+				// if (LOGGER.isTraceEnabled()) {
+				// LOGGER.trace("Resolving lazy loading property {}.{}",
+				// property.getOwner() != null ? property.getOwner().getName() : "unknown", property.getName());
+				// }
 
 				return referenceReader.readReference(property, source, lookupFunction);
 
 			} catch (RuntimeException ex) {
 				throw ex;
 
-//				DataAccessException translatedException = this.exceptionTranslator.translateExceptionIfPossible(ex);
-//
-//				if (translatedException instanceof ClientSessionException) {
-//					throw new LazyLoadingException("Unable to lazily resolve DBRef! Invalid session state.", ex);
-//				}
+				// DataAccessException translatedException = this.exceptionTranslator.translateExceptionIfPossible(ex);
+				//
+				// if (translatedException instanceof ClientSessionException) {
+				// throw new LazyLoadingException("Unable to lazily resolve DBRef! Invalid session state.", ex);
+				// }
 
-//				throw new LazyLoadingException("Unable to lazily resolve DBRef!",
-//						translatedException != null ? translatedException : ex);
+				// throw new LazyLoadingException("Unable to lazily resolve DBRef!",
+				// translatedException != null ? translatedException : ex);
 			}
 		}
 	}

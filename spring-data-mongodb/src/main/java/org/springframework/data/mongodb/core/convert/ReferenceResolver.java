@@ -16,11 +16,11 @@
 package org.springframework.data.mongodb.core.convert;
 
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
-import org.springframework.data.util.Streamable;
 import org.springframework.lang.Nullable;
 
 import com.mongodb.DBRef;
@@ -32,7 +32,7 @@ public interface ReferenceResolver {
 
 	@Nullable
 	Object resolveReference(MongoPersistentProperty property, Object source, ReferenceReader referenceReader,
-			BiFunction<ReferenceContext, Bson, Streamable<Document>> lookupFunction);
+			BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction);
 
 	default Object resolveReference(MongoPersistentProperty property, Object source, ReferenceReader referenceReader) {
 		return resolveReference(property, source, referenceReader, (ctx, filter) -> {
@@ -40,7 +40,7 @@ public interface ReferenceResolver {
 				return getReferenceLoader().bulkFetch(filter, ctx);
 			}
 			Object target = getReferenceLoader().fetch(filter, ctx);
-			return target == null ? Streamable.empty() : Streamable.of(getReferenceLoader().fetch(filter, ctx));
+			return target == null ? Stream.empty() : Stream.of(getReferenceLoader().fetch(filter, ctx));
 		});
 	}
 

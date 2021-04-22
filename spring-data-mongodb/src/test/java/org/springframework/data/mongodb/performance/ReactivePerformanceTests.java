@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -105,7 +106,7 @@ public class ReactivePerformanceTests {
 
 			@Nullable
 			@Override
-			public Object resolveReference(MongoPersistentProperty property, Object source, ReferenceReader referenceReader, BiFunction<ReferenceContext, Bson, Streamable<Document>> lookupFunction) {
+			public Object resolveReference(MongoPersistentProperty property, Object source, ReferenceReader referenceReader, BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
 				return null;
 			}
 

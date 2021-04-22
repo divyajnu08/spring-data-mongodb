@@ -75,27 +75,26 @@ public class ReferenceReader {
 	}
 
 	Object readReference(MongoPersistentProperty property, Object value,
-			BiFunction<ReferenceContext, Bson, Streamable<Document>> lookupFunction) {
+			BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
 
 		SpELContext spELContext = spelContextSupplier.get();
 
 		Document filter = computeFilter(property, value, spELContext);
 		ReferenceContext referenceContext = computeReferenceContext(property, value, spELContext);
 
-		Streamable<Document> result = lookupFunction.apply(referenceContext, filter);
+		Stream<Document> result = lookupFunction.apply(referenceContext, filter);
 
 		if (property.isCollectionLike()) {
 
-			Stream<Document> stream = result.stream();
-			if(filter.containsKey("$or")) {
+			if (filter.containsKey("$or")) {
 				List<Document> ors = filter.get("$or", List.class);
-				stream = stream.sorted((o1, o2) -> compareAgainstReferenceIndex(ors, o1, o2));
+				result = result.sorted((o1, o2) -> compareAgainstReferenceIndex(ors, o1, o2));
 			}
 
-			return stream.map(it -> documentConversionFunction.apply(property, it)).collect(Collectors.toList());
+			return result.map(it -> documentConversionFunction.apply(property, it)).collect(Collectors.toList());
 		}
 
-		return result.map(it -> documentConversionFunction.apply(property, it)).stream().findFirst().orElse(null);
+		return result.map(it -> documentConversionFunction.apply(property, it)).findFirst().orElse(null);
 	}
 
 	private ReferenceContext computeReferenceContext(MongoPersistentProperty property, Object value,
@@ -187,19 +186,17 @@ public class ReferenceReader {
 
 	int compareAgainstReferenceIndex(List<Document> referenceList, Document document1, Document document2) {
 
-		for(int i=0; i<referenceList.size(); i++) {
+		for (int i = 0; i < referenceList.size(); i++) {
 
 			Set<Entry<String, Object>> entries = referenceList.get(i).entrySet();
-			if(document1.entrySet().containsAll(entries)) {
+			if (document1.entrySet().containsAll(entries)) {
 				return -1;
 			}
-			if(document2.entrySet().containsAll(entries)) {
+			if (document2.entrySet().containsAll(entries)) {
 				return 1;
 			}
 		}
 		return referenceList.size();
 	}
-
-
 
 }

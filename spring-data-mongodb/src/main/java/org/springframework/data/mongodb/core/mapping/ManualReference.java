@@ -31,7 +31,7 @@ import org.springframework.data.annotation.Reference;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.FIELD })
 @Reference
-public @interface ManualReference {
+public @interface ManualReference {  // -> Document Reference
 
 	/**
 	 * The database the referred entity resides in.
@@ -43,6 +43,8 @@ public @interface ManualReference {
 	String collection() default "";
 
 	String lookup() default "{ '_id' : ?#{#target} }";
+
+	String sort() default "";
 
 	boolean lazy() default false;
 }

@@ -15,6 +15,9 @@
  */
 package org.springframework.data.mongodb.core.convert;
 
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
@@ -22,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.MongoDatabaseUtils;
 import org.springframework.data.mongodb.core.convert.ReferenceResolver.ReferenceContext;
-import org.springframework.data.util.Streamable;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -61,7 +63,7 @@ public class DefaultReferenceLoader implements ReferenceLoader {
 	}
 
 	@Override
-	public Streamable<Document> bulkFetch(Bson filter, ReferenceContext context) {
+	public Stream<Document> bulkFetch(Bson filter, ReferenceContext context) {
 
 		MongoCollection<Document> collection = getCollection(context);
 
@@ -72,8 +74,7 @@ public class DefaultReferenceLoader implements ReferenceLoader {
 					context.getCollection());
 		}
 
-		return Streamable.of(collection //
-				.find(filter));
+		return StreamSupport.stream(collection.find(filter).spliterator(), false);
 	}
 
 	protected MongoCollection<Document> getCollection(ReferenceContext context) {

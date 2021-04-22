@@ -26,14 +26,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.bson.Document;
-import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.framework.ProxyFactory;
@@ -49,7 +47,6 @@ import org.springframework.data.mongodb.LazyLoadingException;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.MongoDatabaseUtils;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
-import org.springframework.data.util.Streamable;
 import org.springframework.lang.Nullable;
 import org.springframework.objenesis.ObjenesisStd;
 import org.springframework.util.Assert;
@@ -161,7 +158,7 @@ public class DefaultDbRefResolver extends DefaultReferenceResolver implements Db
 
 		List<Document> result = getReferenceLoader()
 				.bulkFetch(new Document("_id", new Document("$in", ids)), ReferenceContext.fromDBRef(refs.iterator().next()))
-				.toList();
+				.collect(Collectors.toList());
 
 		return ids.stream() //
 				.flatMap(id -> documentWithId(id, result)) //

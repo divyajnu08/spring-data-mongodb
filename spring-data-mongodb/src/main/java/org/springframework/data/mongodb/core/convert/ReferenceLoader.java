@@ -15,10 +15,11 @@
  */
 package org.springframework.data.mongodb.core.convert;
 
+import java.util.stream.Stream;
+
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.springframework.data.mongodb.core.convert.ReferenceResolver.ReferenceContext;
-import org.springframework.data.util.Streamable;
 import org.springframework.lang.Nullable;
 
 /**
@@ -29,6 +30,12 @@ public interface ReferenceLoader {
 	@Nullable
 	Document fetch(Bson filter, ReferenceContext context);
 
-	Streamable<Document> bulkFetch(Bson filter, ReferenceContext context);
+	/*
+	// match the query against the stuff we get from there? without $fields
+		// feldpfade
+		// sort bei manual reference mit dabei.
+	 */
+
+	Stream<Document> bulkFetch(Bson filter, ReferenceContext context);
 
 }
