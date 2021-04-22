@@ -41,8 +41,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.convert.WritingConverter;
 import org.springframework.data.mongodb.core.convert.LazyLoadingTestUtils;
 import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.mongodb.core.mapping.ManualReference;
 import org.springframework.data.mongodb.core.mapping.ObjectReference;
 import org.springframework.data.mongodb.test.util.Client;
 import org.springframework.data.mongodb.test.util.MongoClientExtension;
@@ -58,7 +58,7 @@ import com.mongodb.client.model.Filters;
  * @author Christoph Strobl
  */
 @ExtendWith(MongoClientExtension.class)
-public class MongoTemplateManualReferenceTests {
+public class MongoTemplateDocumentReferenceTests {
 
 	public static final String DB_NAME = "manual-reference-tests";
 
@@ -458,28 +458,28 @@ public class MongoTemplateManualReferenceTests {
 		String id;
 		String value;
 
-		@ManualReference SimpleObjectRefWithReadingConverter withReadingConverter;
+		@DocumentReference SimpleObjectRefWithReadingConverter withReadingConverter;
 
-		@ManualReference(lookup = "{ '_id' : '?#{#target}' }") //
+		@DocumentReference(lookup = "{ '_id' : '?#{#target}' }") //
 		SimpleObjectRef simpleValueRef;
 
-		@ManualReference(lookup = "{ '_id' : '?#{#target}' }", lazy = true) //
+		@DocumentReference(lookup = "{ '_id' : '?#{#target}' }", lazy = true) //
 		SimpleObjectRef simpleLazyValueRef;
 
 		@Field("simple-value-ref-annotated-field-name") //
-		@ManualReference(lookup = "{ '_id' : '?#{#target}' }") //
+		@DocumentReference(lookup = "{ '_id' : '?#{#target}' }") //
 		SimpleObjectRef simpleValueRefWithAnnotatedFieldName;
 
-		@ManualReference(lookup = "{ '_id' : '?#{id}' }") //
+		@DocumentReference(lookup = "{ '_id' : '?#{id}' }") //
 		ObjectRefOfDocument objectValueRef;
 
-		@ManualReference(lookup = "{ '_id' : '?#{id}' }", collection = "#collection") //
+		@DocumentReference(lookup = "{ '_id' : '?#{id}' }", collection = "#collection") //
 		ObjectRefOfDocumentWithEmbeddedCollectionName objectValueRefWithEmbeddedCollectionName;
 
-		@ManualReference(lookup = "{ 'refKey1' : '?#{refKey1}', 'refKey2' : '?#{refKey2}' }") //
+		@DocumentReference(lookup = "{ 'refKey1' : '?#{refKey1}', 'refKey2' : '?#{refKey2}' }") //
 		ObjectRefOnNonIdField objectValueRefOnNonIdFields;
 
-		@ManualReference(lookup = "{ 'refKey1' : '?#{refKey1}', 'refKey2' : '?#{refKey2}' }", lazy = true) //
+		@DocumentReference(lookup = "{ 'refKey1' : '?#{refKey1}', 'refKey2' : '?#{refKey2}' }", lazy = true) //
 		ObjectRefOnNonIdField lazyObjectValueRefOnNonIdFields;
 	}
 
@@ -489,20 +489,20 @@ public class MongoTemplateManualReferenceTests {
 		String id;
 		String value;
 
-		@ManualReference(lookup = "{ '_id' : '?#{#target}' }") //
+		@DocumentReference(lookup = "{ '_id' : '?#{#target}' }") //
 		List<SimpleObjectRef> simpleValueRef;
 
 		@Field("simple-value-ref-annotated-field-name") //
-		@ManualReference(lookup = "{ '_id' : '?#{#target}' }") //
+		@DocumentReference(lookup = "{ '_id' : '?#{#target}' }") //
 		List<SimpleObjectRef> simpleValueRefWithAnnotatedFieldName;
 
-		@ManualReference(lookup = "{ '_id' : '?#{id}' }") //
+		@DocumentReference(lookup = "{ '_id' : '?#{id}' }") //
 		List<ObjectRefOfDocument> objectValueRef;
 
-		@ManualReference(lookup = "{ '_id' : '?#{id}' }", collection = "?#{collection}") //
+		@DocumentReference(lookup = "{ '_id' : '?#{id}' }", collection = "?#{collection}") //
 		List<ObjectRefOfDocumentWithEmbeddedCollectionName> objectValueRefWithEmbeddedCollectionName;
 
-		@ManualReference(lookup = "{ 'refKey1' : '?#{refKey1}', 'refKey2' : '?#{refKey2}' }") //
+		@DocumentReference(lookup = "{ 'refKey1' : '?#{refKey1}', 'refKey2' : '?#{refKey2}' }") //
 		List<ObjectRefOnNonIdField> objectValueRefOnNonIdFields;
 	}
 

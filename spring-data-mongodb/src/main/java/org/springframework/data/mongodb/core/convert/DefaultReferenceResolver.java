@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.springframework.data.mongodb.core.mapping.ManualReference;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
 import org.springframework.lang.Nullable;
 
@@ -59,8 +59,8 @@ public class DefaultReferenceResolver implements ReferenceResolver {
 
 	protected boolean isLazyReference(MongoPersistentProperty property) {
 
-		if (property.findAnnotation(ManualReference.class) != null) {
-			return property.findAnnotation(ManualReference.class).lazy();
+		if (property.findAnnotation(DocumentReference.class) != null) {
+			return property.findAnnotation(DocumentReference.class).lazy();
 		}
 
 		return property.getDBRef() != null && property.getDBRef().lazy();

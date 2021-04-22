@@ -30,7 +30,7 @@ import org.bson.conversions.Bson;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mapping.model.SpELContext;
 import org.springframework.data.mongodb.core.convert.ReferenceResolver.ReferenceContext;
-import org.springframework.data.mongodb.core.mapping.ManualReference;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentEntity;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
 import org.springframework.data.mongodb.util.BsonUtils;
@@ -107,9 +107,9 @@ public class ReferenceReader {
 		if (value instanceof Document) {
 
 			Document ref = (Document) value;
-			if (property.isAnnotationPresent(ManualReference.class)) {
+			if (property.isAnnotationPresent(DocumentReference.class)) {
 
-				String collection = property.getRequiredAnnotation(ManualReference.class).collection();
+				String collection = property.getRequiredAnnotation(DocumentReference.class).collection();
 				if (StringUtils.hasText(collection)) {
 
 					Object coll = collection;
@@ -167,7 +167,7 @@ public class ReferenceReader {
 
 	Document computeFilter(MongoPersistentProperty property, Object value, SpELContext spELContext) {
 
-		String lookup = property.getRequiredAnnotation(ManualReference.class).lookup();
+		String lookup = property.getRequiredAnnotation(DocumentReference.class).lookup();
 
 		if (property.isCollectionLike() && value instanceof Collection) {
 
