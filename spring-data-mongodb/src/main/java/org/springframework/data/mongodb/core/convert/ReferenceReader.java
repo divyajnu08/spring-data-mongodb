@@ -18,8 +18,12 @@ package org.springframework.data.mongodb.core.convert;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -78,13 +82,20 @@ public class ReferenceReader {
 		Document filter = computeFilter(property, value, spELContext);
 		ReferenceContext referenceContext = computeReferenceContext(property, value, spELContext);
 
-		Streamable<Object> result = lookupFunction.apply(referenceContext, filter)
-				.map(it -> documentConversionFunction.apply(property, it));
+		Streamable<Document> result = lookupFunction.apply(referenceContext, filter);
+
 		if (property.isCollectionLike()) {
-			return result.toList();
+
+			Stream<Document> stream = result.stream();
+			if(filter.containsKey("$or")) {
+				List<Document> ors = filter.get("$or", List.class);
+				stream = stream.sorted((o1, o2) -> compareAgainstReferenceIndex(ors, o1, o2));
+			}
+
+			return stream.map(it -> documentConversionFunction.apply(property, it)).collect(Collectors.toList());
 		}
 
-		return result.stream().findFirst().orElse(null);
+		return result.map(it -> documentConversionFunction.apply(property, it)).stream().findFirst().orElse(null);
 	}
 
 	private ReferenceContext computeReferenceContext(MongoPersistentProperty property, Object value,
@@ -173,5 +184,22 @@ public class ReferenceReader {
 
 		return codec.decode(lookup, bindingContext(property, value, spELContext));
 	}
+
+	int compareAgainstReferenceIndex(List<Document> referenceList, Document document1, Document document2) {
+
+		for(int i=0; i<referenceList.size(); i++) {
+
+			Set<Entry<String, Object>> entries = referenceList.get(i).entrySet();
+			if(document1.entrySet().containsAll(entries)) {
+				return -1;
+			}
+			if(document2.entrySet().containsAll(entries)) {
+				return 1;
+			}
+		}
+		return referenceList.size();
+	}
+
+
 
 }

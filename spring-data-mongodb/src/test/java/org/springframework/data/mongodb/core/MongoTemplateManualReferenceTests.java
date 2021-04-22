@@ -26,7 +26,11 @@ import lombok.Setter;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
@@ -107,7 +111,8 @@ public class MongoTemplateManualReferenceTests {
 
 		CollectionRefRoot source = new CollectionRefRoot();
 		source.id = "root-1";
-		source.simpleValueRef = Arrays.asList(new SimpleObjectRef("ref-1", "me-the-1-referenced-object"), new SimpleObjectRef("ref-2", "me-the-2-referenced-object"));
+		source.simpleValueRef = Arrays.asList(new SimpleObjectRef("ref-1", "me-the-1-referenced-object"),
+				new SimpleObjectRef("ref-2", "me-the-2-referenced-object"));
 
 		template.save(source);
 
@@ -143,7 +148,8 @@ public class MongoTemplateManualReferenceTests {
 
 		CollectionRefRoot source = new CollectionRefRoot();
 		source.id = "root-1";
-		source.objectValueRef = Arrays.asList(new ObjectRefOfDocument("ref-1", "me-the-1-referenced-object"), new ObjectRefOfDocument("ref-2", "me-the-2-referenced-object"));
+		source.objectValueRef = Arrays.asList(new ObjectRefOfDocument("ref-1", "me-the-1-referenced-object"),
+				new ObjectRefOfDocument("ref-2", "me-the-2-referenced-object"));
 
 		template.save(source);
 
@@ -151,7 +157,8 @@ public class MongoTemplateManualReferenceTests {
 			return db.getCollection(rootCollectionName).find(Filters.eq("_id", "root-1")).first();
 		});
 
-		assertThat(target.get("objectValueRef", List.class)).containsExactly(source.getObjectValueRef().get(0).toReference(), source.getObjectValueRef().get(1).toReference());
+		assertThat(target.get("objectValueRef", List.class)).containsExactly(
+				source.getObjectValueRef().get(0).toReference(), source.getObjectValueRef().get(1).toReference());
 	}
 
 	@Test
@@ -160,8 +167,7 @@ public class MongoTemplateManualReferenceTests {
 		String rootCollectionName = template.getCollectionName(SingleRefRoot.class);
 		String refCollectionName = template.getCollectionName(SimpleObjectRef.class);
 		Document refSource = new Document("_id", "ref-1").append("value", "me-the-referenced-object");
-		Document source = new Document("_id", "id-1").append("value", "v1").append("simpleValueRef",
-				"ref-1");
+		Document source = new Document("_id", "id-1").append("value", "v1").append("simpleValueRef", "ref-1");
 
 		template.execute(db -> {
 
@@ -200,8 +206,7 @@ public class MongoTemplateManualReferenceTests {
 		String rootCollectionName = template.getCollectionName(SingleRefRoot.class);
 		String refCollectionName = template.getCollectionName(SimpleObjectRef.class);
 		Document refSource = new Document("_id", "ref-1").append("value", "me-the-referenced-object");
-		Document source = new Document("_id", "id-1").append("value", "v1").append("simpleLazyValueRef",
-				"ref-1");
+		Document source = new Document("_id", "id-1").append("value", "v1").append("simpleLazyValueRef", "ref-1");
 
 		template.execute(db -> {
 
@@ -226,8 +231,8 @@ public class MongoTemplateManualReferenceTests {
 		String rootCollectionName = template.getCollectionName(SingleRefRoot.class);
 		String refCollectionName = template.getCollectionName(SimpleObjectRef.class);
 		Document refSource = new Document("_id", "ref-1").append("value", "me-the-referenced-object");
-		Document source = new Document("_id", "id-1").append("value", "v1")
-				.append("simple-value-ref-annotated-field-name", "ref-1");
+		Document source = new Document("_id", "id-1").append("value", "v1").append("simple-value-ref-annotated-field-name",
+				"ref-1");
 
 		template.execute(db -> {
 
@@ -247,8 +252,8 @@ public class MongoTemplateManualReferenceTests {
 		String rootCollectionName = template.getCollectionName(CollectionRefRoot.class);
 		String refCollectionName = template.getCollectionName(SimpleObjectRef.class);
 		Document refSource = new Document("_id", "ref-1").append("value", "me-the-referenced-object");
-		Document source = new Document("_id", "id-1").append("value", "v1")
-				.append("simple-value-ref-annotated-field-name", Collections.singletonList("ref-1"));
+		Document source = new Document("_id", "id-1").append("value", "v1").append("simple-value-ref-annotated-field-name",
+				Collections.singletonList("ref-1"));
 
 		template.execute(db -> {
 
@@ -311,8 +316,7 @@ public class MongoTemplateManualReferenceTests {
 		Document refSource = new Document("_id", "ref-1").append("value", "me-the-referenced-object");
 		Document source = new Document("_id", "id-1").append("value", "v1").append(
 				"objectValueRefWithEmbeddedCollectionName",
-				new Document("id", "ref-1")
-						.append("collection", "object-ref-of-document-with-embedded-collection-name")
+				new Document("id", "ref-1").append("collection", "object-ref-of-document-with-embedded-collection-name")
 						.append("property", "without-any-meaning"));
 
 		template.execute(db -> {
@@ -337,11 +341,9 @@ public class MongoTemplateManualReferenceTests {
 		Document source = new Document("_id", "id-1").append("value", "v1").append(
 				"objectValueRefWithEmbeddedCollectionName",
 				Arrays.asList(
-						new Document("id", "ref-1")
-								.append("collection", "object-ref-of-document-with-embedded-collection-name")
-								.append("property", "without-any-meaning"),
-						new Document("id", "ref-2").append("collection",
-								"object-ref-of-document-with-embedded-collection-name")));
+						new Document("id", "ref-2").append("collection", "object-ref-of-document-with-embedded-collection-name"),
+						new Document("id", "ref-1").append("collection", "object-ref-of-document-with-embedded-collection-name")
+								.append("property", "without-any-meaning")));
 
 		template.execute(db -> {
 
@@ -353,8 +355,8 @@ public class MongoTemplateManualReferenceTests {
 
 		CollectionRefRoot result = template.findOne(query(where("id").is("id-1")), CollectionRefRoot.class);
 		assertThat(result.getObjectValueRefWithEmbeddedCollectionName()).containsExactly(
-				new ObjectRefOfDocumentWithEmbeddedCollectionName("ref-1", "me-the-1-referenced-object"),
-				new ObjectRefOfDocumentWithEmbeddedCollectionName("ref-2", "me-the-2-referenced-object"));
+				new ObjectRefOfDocumentWithEmbeddedCollectionName("ref-2", "me-the-2-referenced-object"),
+				new ObjectRefOfDocumentWithEmbeddedCollectionName("ref-1", "me-the-1-referenced-object"));
 	}
 
 	@Test
@@ -362,11 +364,10 @@ public class MongoTemplateManualReferenceTests {
 
 		String rootCollectionName = template.getCollectionName(SingleRefRoot.class);
 		String refCollectionName = template.getCollectionName(ObjectRefOnNonIdField.class);
-		Document refSource = new Document("_id", "ref-1").append("refKey1", "ref-key-1")
-				.append("refKey2", "ref-key-2").append("value", "me-the-referenced-object");
-		Document source = new Document("_id", "id-1").append("value", "v1")
-				.append("objectValueRefOnNonIdFields", new Document("refKey1", "ref-key-1")
-						.append("refKey2", "ref-key-2").append("property", "without-any-meaning"));
+		Document refSource = new Document("_id", "ref-1").append("refKey1", "ref-key-1").append("refKey2", "ref-key-2")
+				.append("value", "me-the-referenced-object");
+		Document source = new Document("_id", "id-1").append("value", "v1").append("objectValueRefOnNonIdFields",
+				new Document("refKey1", "ref-key-1").append("refKey2", "ref-key-2").append("property", "without-any-meaning"));
 
 		template.execute(db -> {
 
@@ -385,11 +386,10 @@ public class MongoTemplateManualReferenceTests {
 
 		String rootCollectionName = template.getCollectionName(SingleRefRoot.class);
 		String refCollectionName = template.getCollectionName(ObjectRefOnNonIdField.class);
-		Document refSource = new Document("_id", "ref-1").append("refKey1", "ref-key-1")
-				.append("refKey2", "ref-key-2").append("value", "me-the-referenced-object");
-		Document source = new Document("_id", "id-1").append("value", "v1")
-				.append("lazyObjectValueRefOnNonIdFields", new Document("refKey1", "ref-key-1")
-						.append("refKey2", "ref-key-2").append("property", "without-any-meaning"));
+		Document refSource = new Document("_id", "ref-1").append("refKey1", "ref-key-1").append("refKey2", "ref-key-2")
+				.append("value", "me-the-referenced-object");
+		Document source = new Document("_id", "id-1").append("value", "v1").append("lazyObjectValueRefOnNonIdFields",
+				new Document("refKey1", "ref-key-1").append("refKey2", "ref-key-2").append("property", "without-any-meaning"));
 
 		template.execute(db -> {
 
@@ -414,11 +414,11 @@ public class MongoTemplateManualReferenceTests {
 
 		String rootCollectionName = template.getCollectionName(CollectionRefRoot.class);
 		String refCollectionName = template.getCollectionName(ObjectRefOnNonIdField.class);
-		Document refSource = new Document("_id", "ref-1").append("refKey1", "ref-key-1")
-				.append("refKey2", "ref-key-2").append("value", "me-the-referenced-object");
-		Document source = new Document("_id", "id-1").append("value", "v1")
-				.append("objectValueRefOnNonIdFields", Collections.singletonList(new Document("refKey1", "ref-key-1")
-						.append("refKey2", "ref-key-2").append("property", "without-any-meaning")));
+		Document refSource = new Document("_id", "ref-1").append("refKey1", "ref-key-1").append("refKey2", "ref-key-2")
+				.append("value", "me-the-referenced-object");
+		Document source = new Document("_id", "id-1").append("value", "v1").append("objectValueRefOnNonIdFields",
+				Collections.singletonList(new Document("refKey1", "ref-key-1").append("refKey2", "ref-key-2").append("property",
+						"without-any-meaning")));
 
 		template.execute(db -> {
 
@@ -432,25 +432,25 @@ public class MongoTemplateManualReferenceTests {
 				.containsExactly(new ObjectRefOnNonIdField("ref-1", "me-the-referenced-object", "ref-key-1", "ref-key-2"));
 	}
 
-//	@Test
-//	void usesReadingConverterIfPresent() {
-//
-//		String rootCollectionName = template.getCollectionName(SingleRefRoot.class);
-//		String refCollectionName = template.getCollectionName(SimpleObjectRefWithReadingConverter.class);
-//		Document refSource = new Document("_id", "ref-1").append("value", "me-the-referenced-object");
-//		Document source = new Document("_id", "id-1").append("value", "v1").append("withReadingConverter",
-//				new Document("the-ref-key-you-did-not-expect", "ref-1"));
-//
-//		template.execute(db -> {
-//
-//			db.getCollection(refCollectionName).insertOne(refSource);
-//			db.getCollection(rootCollectionName).insertOne(source);
-//			return null;
-//		});
-//
-//		SingleRefRoot result = template.findOne(query(where("id").is("id-1")), SingleRefRoot.class);
-//		System.out.println("result: " + result);
-//	}
+	// @Test
+	// void usesReadingConverterIfPresent() {
+	//
+	// String rootCollectionName = template.getCollectionName(SingleRefRoot.class);
+	// String refCollectionName = template.getCollectionName(SimpleObjectRefWithReadingConverter.class);
+	// Document refSource = new Document("_id", "ref-1").append("value", "me-the-referenced-object");
+	// Document source = new Document("_id", "id-1").append("value", "v1").append("withReadingConverter",
+	// new Document("the-ref-key-you-did-not-expect", "ref-1"));
+	//
+	// template.execute(db -> {
+	//
+	// db.getCollection(refCollectionName).insertOne(refSource);
+	// db.getCollection(rootCollectionName).insertOne(source);
+	// return null;
+	// });
+	//
+	// SingleRefRoot result = template.findOne(query(where("id").is("id-1")), SingleRefRoot.class);
+	// System.out.println("result: " + result);
+	// }
 
 	@Data
 	static class SingleRefRoot {
@@ -458,8 +458,7 @@ public class MongoTemplateManualReferenceTests {
 		String id;
 		String value;
 
-		@ManualReference
-		SimpleObjectRefWithReadingConverter withReadingConverter;
+		@ManualReference SimpleObjectRefWithReadingConverter withReadingConverter;
 
 		@ManualReference(lookup = "{ '_id' : '?#{#target}' }") //
 		SimpleObjectRef simpleValueRef;
@@ -553,8 +552,7 @@ public class MongoTemplateManualReferenceTests {
 
 		@Override
 		public Object toReference() {
-			return new Document("id", id).append("collection",
-					"object-ref-of-document-with-embedded-collection-name");
+			return new Document("id", id).append("collection", "object-ref-of-document-with-embedded-collection-name");
 		}
 	}
 
@@ -595,18 +593,81 @@ public class MongoTemplateManualReferenceTests {
 		@Nullable
 		@Override
 		public SimpleObjectRefWithReadingConverter convert(ObjectReference<Document> source) {
-			return template.findOne(query(where("id").is(source.getPointer().get("the-ref-key-you-did-not-expect"))), SimpleObjectRefWithReadingConverter.class);
+			return template.findOne(query(where("id").is(source.getPointer().get("the-ref-key-you-did-not-expect"))),
+					SimpleObjectRefWithReadingConverter.class);
 		}
 	}
 
 	@WritingConverter
-	class SimpleObjectRefWithReadingConverterToDocumentConverter implements Converter<SimpleObjectRefWithReadingConverter, ObjectReference<Document>> {
+	class SimpleObjectRefWithReadingConverterToDocumentConverter
+			implements Converter<SimpleObjectRefWithReadingConverter, ObjectReference<Document>> {
 
 		@Nullable
 		@Override
 		public ObjectReference<Document> convert(SimpleObjectRefWithReadingConverter source) {
 			return () -> new Document("the-ref-key-you-did-not-expect", source.getId());
 		}
+	}
+
+	@Test
+	void xxx() {
+
+
+		Document or1 = new Document("key-1", "value").append("some", "value");
+		Document or2 = new Document("key-2", "value").append("some", "value");
+
+		List<Document> ors = Arrays.asList(or1, or2);
+
+
+		Document source1 = new Document("key-1", "value").append("some", "value");
+		Document source2 = new Document("key-2", "value").append("some", "value");
+		Document source3 = new Document("key-1", "foo").append("some", "value");
+
+		List<Document> source = Arrays.asList(source3, source2, source1);
+
+		List<Document> sorted = source.stream()
+				.sorted(new Comparator<Document>() {
+					@Override
+					public int compare(Document o1, Document o2) {
+
+//						int indexOfO1 = indexOfSubDocument(ors, o1);
+//						int indexOfO2 = indexOfSubDocument(ors, o2);
+//						return indexOfO1-indexOfO2;
+
+						return compareAgainstReferenceIndex(ors, o1, o2);
+
+
+					}
+				}).collect(Collectors.toList());
+
+		System.out.println("sorted: " + sorted);
+
+		assertThat(sorted).containsExactly(source1, source2, source3);
+	}
+
+	int compareAgainstReferenceIndex(List<Document> referenceList, Document document) {
+
+		for(int i=0; i<referenceList.size(); i++) {
+			if(document.entrySet().containsAll(referenceList.get(i).entrySet())) {
+				return i;
+			}
+		}
+		return referenceList.size();
+	}
+
+	int compareAgainstReferenceIndex(List<Document> referenceList, Document document1, Document document2) {
+
+		for(int i=0; i<referenceList.size(); i++) {
+
+			Set<Entry<String, Object>> entries = referenceList.get(i).entrySet();
+			if(document1.entrySet().containsAll(entries)) {
+				return -1;
+			}
+			if(document2.entrySet().containsAll(entries)) {
+				return 1;
+			}
+		}
+		return referenceList.size();
 	}
 
 }
