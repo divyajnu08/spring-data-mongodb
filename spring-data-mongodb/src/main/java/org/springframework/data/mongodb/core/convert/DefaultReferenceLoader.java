@@ -29,6 +29,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 
 /**
@@ -59,7 +60,13 @@ public class DefaultReferenceLoader implements ReferenceLoader {
 							: collection.getNamespace().getDatabaseName(),
 					context.getCollection());
 		}
-		return collection.find(filter).limit(1).first();
+
+		FindIterable<Document> findIterable = collection.find(filter);
+
+		if (context.sort() != null) {
+			findIterable = findIterable.sort(context.sort());
+		}
+		return findIterable.limit(1).first();
 	}
 
 	@Override
@@ -74,7 +81,11 @@ public class DefaultReferenceLoader implements ReferenceLoader {
 					context.getCollection());
 		}
 
-		return StreamSupport.stream(collection.find(filter).spliterator(), false);
+		FindIterable<Document> findIterable = collection.find(filter);
+		if (context.sort() != null) {
+			findIterable = findIterable.sort(context.sort());
+		}
+		return StreamSupport.stream(findIterable.spliterator(), false);
 	}
 
 	protected MongoCollection<Document> getCollection(ReferenceContext context) {

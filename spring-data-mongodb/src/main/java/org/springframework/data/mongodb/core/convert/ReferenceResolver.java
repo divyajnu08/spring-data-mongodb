@@ -53,13 +53,15 @@ public interface ReferenceResolver {
 		@Nullable
 		private Bson sort;
 
-		public ReferenceContext(@Nullable String database, String collection) {
+		public ReferenceContext(@Nullable String database, String collection, @Nullable Document sort) {
+
 			this.database = database;
 			this.collection = collection;
+			this.sort = sort;
 		}
 
 		static ReferenceContext fromDBRef(DBRef dbRef) {
-			return new ReferenceContext(dbRef.getDatabaseName(), dbRef.getCollectionName());
+			return new ReferenceContext(dbRef.getDatabaseName(), dbRef.getCollectionName(), null);
 		}
 
 		public String getCollection() {
@@ -75,6 +77,7 @@ public interface ReferenceResolver {
 		public Bson sort() {
 			return sort;
 		}
+
 	}
 
 	// TODO: use resolution context instead of property, source, reader

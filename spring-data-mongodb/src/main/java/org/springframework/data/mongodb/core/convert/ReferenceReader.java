@@ -40,7 +40,7 @@ import org.springframework.data.mongodb.util.json.ValueProvider;
 import org.springframework.data.util.Lazy;
 import org.springframework.data.util.Streamable;
 import org.springframework.expression.EvaluationContext;
-import org.springframework.util.ObjectUtils;
+import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 import com.mongodb.DBRef;
@@ -104,48 +104,64 @@ public class ReferenceReader {
 			value = ((Iterable<?>) value).iterator().next();
 		}
 
-		if (value instanceof Document) {
-
-			Document ref = (Document) value;
-			if (property.isAnnotationPresent(DocumentReference.class)) {
-
-				// TODO: databae reference
-
-				String collection = property.getRequiredAnnotation(DocumentReference.class).collection();
-				if (StringUtils.hasText(collection)) {
-
-					Object coll = collection;
-					ParameterBindingContext bindingContext = bindingContext(property, value, spELContext);
-
-					if (!BsonUtils.isJsonDocument(collection) && collection.contains("?#{")) {
-						String s = "{ 'target-collection' : " + collection + "}";
-						coll = new ParameterBindingDocumentCodec().decode(s, bindingContext).getString("target-collection");
-					} else {
-						coll = bindingContext.evaluateExpression(collection);
-					}
-
-					if (coll != null) {
-						return new ReferenceContext(ref.getString("db"), ObjectUtils.nullSafeToString(coll));
-					}
-				}
-
-				// TODO: sort
-				String sort = property.getRequiredAnnotation(DocumentReference.class).sort();
-				if (StringUtils.hasText(sort)) {
-					ParameterBindingContext bindingContext = bindingContext(property, value, spELContext);
-				}
-			}
-
-			return new ReferenceContext(ref.getString("db"), ref.get("collection",
-					mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection()));
-		}
-
 		if (value instanceof DBRef) {
 			return ReferenceContext.fromDBRef((DBRef) value);
 		}
 
+		if (value instanceof Document) {
+
+			Document ref = (Document) value;
+
+			if (property.isAnnotationPresent(DocumentReference.class)) {
+
+				ParameterBindingContext bindingContext = bindingContext(property, value, spELContext);
+				DocumentReference documentReference = property.getRequiredAnnotation(DocumentReference.class);
+
+				String targetDatabase = parseValueOrGet(documentReference.db(), bindingContext,
+						() -> ref.get("db", String.class));
+				String targetCollection = parseValueOrGet(documentReference.collection(), bindingContext,
+						() -> ref.get("collection",
+								mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection()));
+				Document sort = parseValueOrGet(documentReference.sort(), bindingContext, () -> null);
+				return new ReferenceContext(targetDatabase, targetCollection, sort);
+			}
+
+			return new ReferenceContext(ref.getString("db"), ref.get("collection",
+					mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection()), null);
+		}
+
+		if (property.isAnnotationPresent(DocumentReference.class)) {
+
+			ParameterBindingContext bindingContext = bindingContext(property, value, spELContext);
+			DocumentReference documentReference = property.getRequiredAnnotation(DocumentReference.class);
+
+			String targetDatabase = parseValueOrGet(documentReference.db(), bindingContext, () -> null);
+			String targetCollection = parseValueOrGet(documentReference.collection(), bindingContext,
+					() -> mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection());
+			Document sort = parseValueOrGet(documentReference.sort(), bindingContext, () -> null);
+
+			return new ReferenceContext(targetDatabase, targetCollection, sort);
+		}
+
 		return new ReferenceContext(null,
-				mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection());
+				mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection(), null);
+	}
+
+	@Nullable
+	private <T> T parseValueOrGet(String value, ParameterBindingContext bindingContext, Supplier<T> defaultValue) {
+
+		if (!StringUtils.hasText(value)) {
+			return defaultValue.get();
+		}
+
+		if (!BsonUtils.isJsonDocument(value) && value.contains("?#{")) {
+			String s = "{ 'target-value' : " + value + "}";
+			T evaluated = (T) new ParameterBindingDocumentCodec().decode(s, bindingContext).get("target-value ");
+			return evaluated != null ? evaluated : defaultValue.get();
+		}
+
+		T evaluated = (T) bindingContext.evaluateExpression(value);
+		return evaluated != null ? evaluated : defaultValue.get();
 	}
 
 	ParameterBindingContext bindingContext(MongoPersistentProperty property, Object source, SpELContext spELContext) {
