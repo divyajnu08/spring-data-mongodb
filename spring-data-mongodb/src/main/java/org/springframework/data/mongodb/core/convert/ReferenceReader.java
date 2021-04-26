@@ -109,6 +109,8 @@ public class ReferenceReader {
 			Document ref = (Document) value;
 			if (property.isAnnotationPresent(DocumentReference.class)) {
 
+				// TODO: databae reference
+
 				String collection = property.getRequiredAnnotation(DocumentReference.class).collection();
 				if (StringUtils.hasText(collection)) {
 
@@ -125,6 +127,12 @@ public class ReferenceReader {
 					if (coll != null) {
 						return new ReferenceContext(ref.getString("db"), ObjectUtils.nullSafeToString(coll));
 					}
+				}
+
+				// TODO: sort
+				String sort = property.getRequiredAnnotation(DocumentReference.class).sort();
+				if (StringUtils.hasText(sort)) {
+					ParameterBindingContext bindingContext = bindingContext(property, value, spELContext);
 				}
 			}
 

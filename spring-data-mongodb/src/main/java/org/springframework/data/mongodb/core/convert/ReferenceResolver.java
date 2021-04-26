@@ -50,7 +50,6 @@ public interface ReferenceResolver {
 
 		@Nullable final String database;
 		final String collection;
-		private boolean lazy;
 		@Nullable
 		private Bson sort;
 
@@ -70,10 +69,6 @@ public interface ReferenceResolver {
 		@Nullable
 		public String getDatabase() {
 			return database;
-		}
-
-		public boolean isLazyReference() {
-			return lazy;
 		}
 
 		@Nullable
