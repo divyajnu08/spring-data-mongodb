@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.springframework.data.mongodb.core.convert.ReferenceLoader.ReferenceFilter;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
 import org.springframework.lang.Nullable;
 
@@ -76,7 +77,7 @@ public enum NoOpDbRefResolver implements DbRefResolver {
 	@Nullable
 	@Override
 	public Object resolveReference(MongoPersistentProperty property, Object source, ReferenceReader referenceReader,
-			BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
+			BiFunction<ReferenceContext, ReferenceFilter, Stream<Document>> lookupFunction) {
 		return null;
 	}
 

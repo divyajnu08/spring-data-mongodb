@@ -17,8 +17,12 @@ package org.springframework.data.mongodb.core.convert;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
@@ -29,6 +33,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mapping.model.SpELContext;
+import org.springframework.data.mongodb.core.convert.ReferenceLoader.ReferenceFilter;
 import org.springframework.data.mongodb.core.convert.ReferenceResolver.ReferenceContext;
 import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentEntity;
@@ -44,6 +49,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 import com.mongodb.DBRef;
+import com.mongodb.client.MongoCollection;
 
 /**
  * @author Christoph Strobl
@@ -75,23 +81,27 @@ public class ReferenceReader {
 	}
 
 	Object readReference(MongoPersistentProperty property, Object value,
-			BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
+			BiFunction<ReferenceContext, ReferenceFilter, Stream<Document>> lookupFunction) {
 
 		SpELContext spELContext = spelContextSupplier.get();
 
-		Document filter = computeFilter(property, value, spELContext);
+		ReferenceFilter filter = computeFilter(property, value, spELContext);
 		ReferenceContext referenceContext = computeReferenceContext(property, value, spELContext);
 
 		Stream<Document> result = lookupFunction.apply(referenceContext, filter);
 
 		if (property.isCollectionLike()) {
-
-			if (filter.containsKey("$or")) {
-				List<Document> ors = filter.get("$or", List.class);
-				result = result.sorted((o1, o2) -> compareAgainstReferenceIndex(ors, o1, o2));
-			}
-
 			return result.map(it -> documentConversionFunction.apply(property, it)).collect(Collectors.toList());
+		}
+
+		if (property.isMap()) {
+
+			// the order is a real problem here
+			Iterator<Object> keyIterator = ((Map) value).keySet().iterator();
+			return result.map(it -> it.entrySet().stream().collect(Collectors.toMap(key -> key.getKey(), val -> {
+				Object apply = documentConversionFunction.apply(property, (Document) val.getValue());
+				return apply;
+			}))).findFirst().orElse(null);
 		}
 
 		return result.map(it -> documentConversionFunction.apply(property, it)).findFirst().orElse(null);
@@ -122,12 +132,11 @@ public class ReferenceReader {
 				String targetCollection = parseValueOrGet(documentReference.collection(), bindingContext,
 						() -> ref.get("collection",
 								mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection()));
-				Document sort = parseValueOrGet(documentReference.sort(), bindingContext, () -> null);
-				return new ReferenceContext(targetDatabase, targetCollection, sort);
+				return new ReferenceContext(targetDatabase, targetCollection);
 			}
 
 			return new ReferenceContext(ref.getString("db"), ref.get("collection",
-					mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection()), null);
+					mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection()));
 		}
 
 		if (property.isAnnotationPresent(DocumentReference.class)) {
@@ -140,11 +149,11 @@ public class ReferenceReader {
 					() -> mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection());
 			Document sort = parseValueOrGet(documentReference.sort(), bindingContext, () -> null);
 
-			return new ReferenceContext(targetDatabase, targetCollection, sort);
+			return new ReferenceContext(targetDatabase, targetCollection);
 		}
 
 		return new ReferenceContext(null,
-				mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection(), null);
+				mappingContext.get().getPersistentEntity(property.getAssociationTargetType()).getCollection());
 	}
 
 	@Nullable
@@ -189,9 +198,12 @@ public class ReferenceReader {
 		return ctx;
 	}
 
-	Document computeFilter(MongoPersistentProperty property, Object value, SpELContext spELContext) {
+	ReferenceFilter computeFilter(MongoPersistentProperty property, Object value, SpELContext spELContext) {
 
-		String lookup = property.getRequiredAnnotation(DocumentReference.class).lookup();
+		DocumentReference documentReference = property.getRequiredAnnotation(DocumentReference.class);
+		String lookup = documentReference.lookup();
+
+		Document sort = parseValueOrGet(documentReference.sort(), bindingContext(property, value, spELContext), () -> null);
 
 		if (property.isCollectionLike() && value instanceof Collection) {
 
@@ -202,25 +214,137 @@ public class ReferenceReader {
 				ors.add(decoded);
 			}
 
-			return new Document("$or", ors);
+			return new ListReferenceFilter(new Document("$or", ors), sort);
 		}
 
-		return codec.decode(lookup, bindingContext(property, value, spELContext));
+		if (property.isMap() && value instanceof Map) {
+
+			Map<Object, Document> filterMap = new LinkedHashMap<>();
+
+			for (Entry entry : ((Map<Object, Object>) value).entrySet()) {
+
+				Document decoded = codec.decode(lookup, bindingContext(property, entry.getValue(), spELContext));
+				filterMap.put(entry.getKey(), decoded);
+			}
+
+			return new MapReferenceFilter(new Document("$or", filterMap.values()), sort, filterMap);
+		}
+
+		return new SingleReferenceFilter(codec.decode(lookup, bindingContext(property, value, spELContext)), sort);
 	}
 
-	int compareAgainstReferenceIndex(List<Document> referenceList, Document document1, Document document2) {
+	static class SingleReferenceFilter implements ReferenceFilter {
 
-		for (int i = 0; i < referenceList.size(); i++) {
+		Document filter;
+		Document sort;
 
-			Set<Entry<String, Object>> entries = referenceList.get(i).entrySet();
-			if (document1.entrySet().containsAll(entries)) {
-				return -1;
-			}
-			if (document2.entrySet().containsAll(entries)) {
-				return 1;
-			}
+		public SingleReferenceFilter(Document filter, Document sort) {
+			this.filter = filter;
+			this.sort = sort;
 		}
-		return referenceList.size();
+
+		@Override
+		public Bson getFilter() {
+			return filter;
+		}
+
+		@Override
+		public Stream<Document> apply(MongoCollection<Document> collection) {
+
+			Document result = collection.find(getFilter()).limit(1).first();
+			return result != null ? Stream.of(result) : Stream.empty();
+		}
+	}
+
+	static class MapReferenceFilter implements ReferenceFilter {
+
+		Document filter;
+		Document sort;
+		Map<Object, Document> filterOrderMap;
+
+		public MapReferenceFilter(Document filter, Document sort, Map<Object, Document> filterOrderMap) {
+
+			this.filter = filter;
+			this.filterOrderMap = filterOrderMap;
+			this.sort = sort;
+		}
+
+		@Override
+		public Bson getFilter() {
+			return filter;
+		}
+
+		@Override
+		public Bson getSort() {
+			return sort;
+		}
+
+		@Override
+		public Stream<Document> restoreOrder(Stream<Document> stream) {
+
+			Map<String, Object> targetMap = new LinkedHashMap<>();
+			List<Document> collected = stream.collect(Collectors.toList());
+
+			for (Entry<Object, Document> filterMapping : filterOrderMap.entrySet()) {
+
+				String key = filterMapping.getKey().toString();
+				Optional<Document> first = collected.stream().filter(it -> {
+
+					boolean found = it.entrySet().containsAll(filterMapping.getValue().entrySet());
+					return found;
+				}).findFirst();
+
+				targetMap.put(key, first.orElse(null));
+			}
+			return Stream.of(new Document(targetMap));
+		}
+	}
+
+	static class ListReferenceFilter implements ReferenceFilter {
+
+		Document filter;
+		Document sort;
+
+		public ListReferenceFilter(Document filter, Document sort) {
+			this.filter = filter;
+			this.sort = sort;
+		}
+
+		@Override
+		public Stream<Document> restoreOrder(Stream<Document> stream) {
+
+			if (filter.containsKey("$or")) {
+				List<Document> ors = filter.get("$or", List.class);
+				return stream.sorted((o1, o2) -> compareAgainstReferenceIndex(ors, o1, o2));
+			}
+
+			return stream;
+		}
+
+		public Document getFilter() {
+			return filter;
+		}
+
+		@Override
+		public Document getSort() {
+			return sort;
+		}
+
+		int compareAgainstReferenceIndex(List<Document> referenceList, Document document1, Document document2) {
+
+			for (int i = 0; i < referenceList.size(); i++) {
+
+				Set<Entry<String, Object>> entries = referenceList.get(i).entrySet();
+				if (document1.entrySet().containsAll(entries)) {
+					return -1;
+				}
+				if (document2.entrySet().containsAll(entries)) {
+					return 1;
+				}
+			}
+			return referenceList.size();
+		}
+
 	}
 
 }

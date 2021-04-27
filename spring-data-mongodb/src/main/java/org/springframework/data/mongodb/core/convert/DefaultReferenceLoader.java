@@ -48,29 +48,8 @@ public class DefaultReferenceLoader implements ReferenceLoader {
 		this.mongoDbFactory = mongoDbFactory;
 	}
 
-	@Nullable
 	@Override
-	public Document fetch(Bson filter, ReferenceContext context) {
-
-		MongoCollection<Document> collection = getCollection(context);
-
-		if (LOGGER.isTraceEnabled()) {
-			LOGGER.trace("Fetching Reference '{}' from {}.{}.", filter,
-					StringUtils.hasText(context.getDatabase()) ? context.getDatabase()
-							: collection.getNamespace().getDatabaseName(),
-					context.getCollection());
-		}
-
-		FindIterable<Document> findIterable = collection.find(filter);
-
-		if (context.sort() != null) {
-			findIterable = findIterable.sort(context.sort());
-		}
-		return findIterable.limit(1).first();
-	}
-
-	@Override
-	public Stream<Document> bulkFetch(Bson filter, ReferenceContext context) {
+	public Stream<Document> bulkFetch(ReferenceFilter filter, ReferenceContext context) {
 
 		MongoCollection<Document> collection = getCollection(context);
 
@@ -81,11 +60,7 @@ public class DefaultReferenceLoader implements ReferenceLoader {
 					context.getCollection());
 		}
 
-		FindIterable<Document> findIterable = collection.find(filter);
-		if (context.sort() != null) {
-			findIterable = findIterable.sort(context.sort());
-		}
-		return StreamSupport.stream(findIterable.spliterator(), false);
+		return filter.apply(collection);
 	}
 
 	protected MongoCollection<Document> getCollection(ReferenceContext context) {

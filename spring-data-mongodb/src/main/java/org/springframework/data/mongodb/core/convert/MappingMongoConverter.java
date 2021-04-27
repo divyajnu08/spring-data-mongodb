@@ -841,7 +841,7 @@ public class MappingMongoConverter extends AbstractMongoConverter implements App
 		Assert.notNull(map, "Given map must not be null!");
 		Assert.notNull(property, "PersistentProperty must not be null!");
 
-		if (!property.isDbReference()) {
+		if (!property.isAssociation()) {
 			return writeMapInternal(map, new Document(), property.getTypeInformation());
 		}
 
@@ -855,7 +855,17 @@ public class MappingMongoConverter extends AbstractMongoConverter implements App
 			if (conversions.isSimpleType(key.getClass())) {
 
 				String simpleKey = prepareMapKey(key.toString());
-				document.put(simpleKey, value != null ? createDBRef(value, property) : null);
+				if(property.isDbReference()) {
+					document.put(simpleKey, value != null ? createDBRef(value, property) : null);
+				} else {
+					if (conversionService.canConvert(value.getClass(), ObjectReference.class)) {
+						document.put(simpleKey, conversionService.convert(value, ObjectReference.class).getPointer());
+					} else {
+						// just take the id as a reference
+						document.put(simpleKey, mappingContext.getPersistentEntity(property.getAssociationTargetType()).getIdentifierAccessor(value)
+								.getIdentifier());
+					}
+				}
 
 			} else {
 				throw new MappingException("Cannot use a complex object as a key value.");

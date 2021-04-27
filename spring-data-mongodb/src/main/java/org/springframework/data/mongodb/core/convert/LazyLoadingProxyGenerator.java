@@ -34,6 +34,7 @@ import org.springframework.cglib.proxy.Callback;
 import org.springframework.cglib.proxy.Enhancer;
 import org.springframework.cglib.proxy.Factory;
 import org.springframework.cglib.proxy.MethodProxy;
+import org.springframework.data.mongodb.core.convert.ReferenceLoader.ReferenceFilter;
 import org.springframework.data.mongodb.core.convert.ReferenceResolver.ReferenceContext;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
 import org.springframework.objenesis.ObjenesisStd;
@@ -54,7 +55,7 @@ class LazyLoadingProxyGenerator {
 	}
 
 	public Object createLazyLoadingProxy(MongoPersistentProperty property, Object source,
-			BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
+			BiFunction<ReferenceContext, ReferenceFilter, Stream<Document>> lookupFunction) {
 
 		Class<?> propertyType = property.getType();
 		LazyLoadingInterceptor interceptor = new LazyLoadingInterceptor(property, source, referenceReader, lookupFunction);
@@ -104,7 +105,7 @@ class LazyLoadingProxyGenerator {
 		private volatile boolean resolved;
 		private @org.springframework.lang.Nullable Object result;
 		private Object source;
-		private BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction;
+		private BiFunction<ReferenceContext, ReferenceFilter, Stream<Document>> lookupFunction;
 
 		private final Method INITIALIZE_METHOD, TO_DBREF_METHOD, FINALIZE_METHOD;
 
@@ -119,7 +120,7 @@ class LazyLoadingProxyGenerator {
 		}
 
 		public LazyLoadingInterceptor(MongoPersistentProperty property, Object source, ReferenceReader reader,
-				BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
+				BiFunction<ReferenceContext, ReferenceFilter, Stream<Document>> lookupFunction) {
 
 			this.property = property;
 			this.source = source;

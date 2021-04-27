@@ -64,6 +64,7 @@ class DefaultDbRefResolverUnitTests {
 		when(factoryMock.getMongoDatabase()).thenReturn(dbMock);
 		when(dbMock.getCollection(anyString(), any(Class.class))).thenReturn(collectionMock);
 		when(collectionMock.find(any(Document.class))).thenReturn(cursorMock);
+		when(cursorMock.sort(any(Document.class))).thenReturn(cursorMock);
 		when(cursorMock.spliterator()).thenReturn(Collections.<Document> emptyList().spliterator());
 
 		resolver = new DefaultDbRefResolver(factoryMock);

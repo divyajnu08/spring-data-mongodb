@@ -20,6 +20,7 @@ import java.util.stream.Stream;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.springframework.data.mongodb.core.convert.ReferenceLoader.ReferenceFilter;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
 import org.springframework.lang.Nullable;
 
@@ -32,11 +33,11 @@ public interface ReferenceResolver {
 
 	@Nullable
 	Object resolveReference(MongoPersistentProperty property, Object source, ReferenceReader referenceReader,
-			BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction);
+			BiFunction<ReferenceContext, ReferenceFilter, Stream<Document>> lookupFunction);
 
 	default Object resolveReference(MongoPersistentProperty property, Object source, ReferenceReader referenceReader) {
 		return resolveReference(property, source, referenceReader, (ctx, filter) -> {
-			if (property.isCollectionLike()) {
+			if (property.isCollectionLike() || property.isMap()) {
 				return getReferenceLoader().bulkFetch(filter, ctx);
 			}
 			Object target = getReferenceLoader().fetch(filter, ctx);
@@ -50,18 +51,15 @@ public interface ReferenceResolver {
 
 		@Nullable final String database;
 		final String collection;
-		@Nullable
-		private Bson sort;
 
-		public ReferenceContext(@Nullable String database, String collection, @Nullable Document sort) {
+		public ReferenceContext(@Nullable String database, String collection) {
 
 			this.database = database;
 			this.collection = collection;
-			this.sort = sort;
 		}
 
 		static ReferenceContext fromDBRef(DBRef dbRef) {
-			return new ReferenceContext(dbRef.getDatabaseName(), dbRef.getCollectionName(), null);
+			return new ReferenceContext(dbRef.getDatabaseName(), dbRef.getCollectionName());
 		}
 
 		public String getCollection() {
@@ -72,37 +70,5 @@ public interface ReferenceResolver {
 		public String getDatabase() {
 			return database;
 		}
-
-		@Nullable
-		public Bson sort() {
-			return sort;
-		}
-
-	}
-
-	// TODO: use resolution context instead of property, source, reader
-	class ResolutionContext {
-		ReferenceResolverCallback callback;
-		ReferenceProxyHandler proxyHandler;
-		OrderFunction orderFunction;
-	}
-
-	interface ReferenceResolverCallback {
-
-		/**
-		 * Resolve the final object for the given {@link MongoPersistentProperty}.
-		 *
-		 * @param property will never be {@literal null}.
-		 * @return
-		 */
-		Object resolve(MongoPersistentProperty property);
-	}
-
-	interface ReferenceProxyHandler {
-		Object populateId(MongoPersistentProperty property, @Nullable Object source, Object proxy);
-	}
-
-	interface OrderFunction {
-		BiFunction<Object, Document, Document> order();
 	}
 }

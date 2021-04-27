@@ -26,11 +26,9 @@ import lombok.Setter;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,6 +100,28 @@ public class MongoTemplateDocumentReferenceTests {
 		});
 
 		assertThat(target.get("simpleValueRef")).isEqualTo("ref-1");
+	}
+
+	@Test
+	void writeMapTypeReference() {
+
+		String rootCollectionName = template.getCollectionName(CollectionRefRoot.class);
+
+
+		CollectionRefRoot source = new CollectionRefRoot();
+		source.id = "root-1";
+		source.mapValueRef = new LinkedHashMap<>();
+		source.mapValueRef.put("frodo", new SimpleObjectRef("ref-1", "me-the-1-referenced-object"));
+		source.mapValueRef.put("bilbo", new SimpleObjectRef("ref-2", "me-the-2-referenced-object"));
+
+		template.save(source);
+
+		Document target = template.execute(db -> {
+			return db.getCollection(rootCollectionName).find(Filters.eq("_id", "root-1")).first();
+		});
+
+		System.out.println("target: " + target.toJson());
+		assertThat(target.get("mapValueRef", Map.class)).containsEntry("frodo", "ref-1").containsEntry("bilbo", "ref-2");
 	}
 
 	@Test
@@ -432,25 +452,40 @@ public class MongoTemplateDocumentReferenceTests {
 				.containsExactly(new ObjectRefOnNonIdField("ref-1", "me-the-referenced-object", "ref-key-1", "ref-key-2"));
 	}
 
-	// @Test
-	// void usesReadingConverterIfPresent() {
-	//
-	// String rootCollectionName = template.getCollectionName(SingleRefRoot.class);
-	// String refCollectionName = template.getCollectionName(SimpleObjectRefWithReadingConverter.class);
-	// Document refSource = new Document("_id", "ref-1").append("value", "me-the-referenced-object");
-	// Document source = new Document("_id", "id-1").append("value", "v1").append("withReadingConverter",
-	// new Document("the-ref-key-you-did-not-expect", "ref-1"));
-	//
-	// template.execute(db -> {
-	//
-	// db.getCollection(refCollectionName).insertOne(refSource);
-	// db.getCollection(rootCollectionName).insertOne(source);
-	// return null;
-	// });
-	//
-	// SingleRefRoot result = template.findOne(query(where("id").is("id-1")), SingleRefRoot.class);
-	// System.out.println("result: " + result);
-	// }
+	@Test
+	void readMapOfReferences() {
+
+		String rootCollectionName = template.getCollectionName(CollectionRefRoot.class);
+		String refCollectionName = template.getCollectionName(SimpleObjectRef.class);
+
+		Document refSource1 = new Document("_id", "ref-1").append("refKey1", "ref-key-1").append("refKey2", "ref-key-2")
+				.append("value", "me-the-1-referenced-object");
+
+		Document refSource2 = new Document("_id", "ref-2").append("refKey1", "ref-key-1").append("refKey2", "ref-key-2")
+				.append("value", "me-the-2-referenced-object");
+
+		Map<String, String> refmap = new LinkedHashMap<>();
+		refmap.put("frodo", "ref-1");
+		refmap.put("bilbo", "ref-2");
+
+		Document source = new Document("_id", "id-1").append("value", "v1").append("mapValueRef", refmap);
+
+		template.execute(db -> {
+
+			db.getCollection(rootCollectionName).insertOne(source);
+			db.getCollection(refCollectionName).insertOne(refSource1);
+			db.getCollection(refCollectionName).insertOne(refSource2);
+			return null;
+		});
+
+		CollectionRefRoot result = template.findOne(query(where("id").is("id-1")), CollectionRefRoot.class);
+		System.out.println("result: " + result);
+
+		assertThat(result.getMapValueRef()).containsEntry("frodo",
+				new SimpleObjectRef("ref-1", "me-the-1-referenced-object"))
+				.containsEntry("bilbo",
+						new SimpleObjectRef("ref-2", "me-the-2-referenced-object"));
+	}
 
 	@Data
 	static class SingleRefRoot {
@@ -491,6 +526,9 @@ public class MongoTemplateDocumentReferenceTests {
 
 		@DocumentReference(lookup = "{ '_id' : '?#{#target}' }") //
 		List<SimpleObjectRef> simpleValueRef;
+
+		@DocumentReference(lookup = "{ '_id' : '?#{#target}' }") //
+		Map<String, SimpleObjectRef> mapValueRef;
 
 		@Field("simple-value-ref-annotated-field-name") //
 		@DocumentReference(lookup = "{ '_id' : '?#{#target}' }") //
@@ -608,66 +646,4 @@ public class MongoTemplateDocumentReferenceTests {
 			return () -> new Document("the-ref-key-you-did-not-expect", source.getId());
 		}
 	}
-
-	@Test
-	void xxx() {
-
-
-		Document or1 = new Document("key-1", "value").append("some", "value");
-		Document or2 = new Document("key-2", "value").append("some", "value");
-
-		List<Document> ors = Arrays.asList(or1, or2);
-
-
-		Document source1 = new Document("key-1", "value").append("some", "value");
-		Document source2 = new Document("key-2", "value").append("some", "value");
-		Document source3 = new Document("key-1", "foo").append("some", "value");
-
-		List<Document> source = Arrays.asList(source3, source2, source1);
-
-		List<Document> sorted = source.stream()
-				.sorted(new Comparator<Document>() {
-					@Override
-					public int compare(Document o1, Document o2) {
-
-//						int indexOfO1 = indexOfSubDocument(ors, o1);
-//						int indexOfO2 = indexOfSubDocument(ors, o2);
-//						return indexOfO1-indexOfO2;
-
-						return compareAgainstReferenceIndex(ors, o1, o2);
-
-
-					}
-				}).collect(Collectors.toList());
-
-		System.out.println("sorted: " + sorted);
-
-		assertThat(sorted).containsExactly(source1, source2, source3);
-	}
-
-	int compareAgainstReferenceIndex(List<Document> referenceList, Document document) {
-
-		for(int i=0; i<referenceList.size(); i++) {
-			if(document.entrySet().containsAll(referenceList.get(i).entrySet())) {
-				return i;
-			}
-		}
-		return referenceList.size();
-	}
-
-	int compareAgainstReferenceIndex(List<Document> referenceList, Document document1, Document document2) {
-
-		for(int i=0; i<referenceList.size(); i++) {
-
-			Set<Entry<String, Object>> entries = referenceList.get(i).entrySet();
-			if(document1.entrySet().containsAll(entries)) {
-				return -1;
-			}
-			if(document2.entrySet().containsAll(entries)) {
-				return 1;
-			}
-		}
-		return referenceList.size();
-	}
-
 }

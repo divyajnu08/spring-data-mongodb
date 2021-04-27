@@ -20,6 +20,7 @@ import java.util.stream.Stream;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.springframework.data.mongodb.core.convert.ReferenceLoader.ReferenceFilter;
 import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
 import org.springframework.lang.Nullable;
@@ -43,7 +44,7 @@ public class DefaultReferenceResolver implements ReferenceResolver {
 	@Nullable
 	@Override
 	public Object resolveReference(MongoPersistentProperty property, Object source, ReferenceReader referenceReader,
-			BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
+			BiFunction<ReferenceContext, ReferenceFilter, Stream<Document>> lookupFunction) {
 
 		if (isLazyReference(property)) {
 			return createLazyLoadingProxy(property, source, referenceReader, lookupFunction);
@@ -53,7 +54,7 @@ public class DefaultReferenceResolver implements ReferenceResolver {
 	}
 
 	private Object createLazyLoadingProxy(MongoPersistentProperty property, Object source,
-			ReferenceReader referenceReader, BiFunction<ReferenceContext, Bson, Stream<Document>> lookupFunction) {
+			ReferenceReader referenceReader, BiFunction<ReferenceContext, ReferenceFilter, Stream<Document>> lookupFunction) {
 		return new LazyLoadingProxyGenerator(referenceReader).createLazyLoadingProxy(property, source, lookupFunction);
 	}
 
