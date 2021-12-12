@@ -18,6 +18,7 @@ package org.springframework.data.mongodb.core.aggregation;
 import java.util.Collections;
 import java.util.List;
 
+
 import org.springframework.util.Assert;
 
 /**
@@ -143,11 +144,20 @@ public class ComparisonOperators {
 		public Eq equalToValue(Object value) {
 			return createEq().equalToValue(value);
 		}
+		
+		/**
+		 * Creates new (@link AggregationExpression} that returns (@literal true} when a value is equal to null.
+		 * 
+		 * @return new instance of {@link Eq}
+		 */
+		public Eq isNull() {
+			return createEq().equalToValue(null);
+		}
 
 		private Eq createEq() {
 			return usesFieldRef() ? Eq.valueOf(fieldReference) : Eq.valueOf(expression);
 		}
-
+		
 		/**
 		 * Creates new {@link AggregationExpression} that compares two values and returns {@literal true} when the first
 		 * value is greater than the value of the referenced field.
@@ -487,9 +497,10 @@ public class ComparisonOperators {
 		 */
 		public Eq equalToValue(Object value) {
 
-			Assert.notNull(value, "Value must not be null!");
+			//Assert.notNull(value, "Value must not be null!");
 			return new Eq(append(value, Expand.KEEP_SOURCE));
 		}
+		
 	}
 
 	/**
@@ -876,4 +887,5 @@ public class ComparisonOperators {
 			return new Ne(append(value, Expand.KEEP_SOURCE));
 		}
 	}
+	
 }
