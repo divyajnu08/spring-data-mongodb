@@ -440,4 +440,14 @@ public class CriteriaUnitTests {
 
 		assertThat(left).isEqualTo(right);
 	}
+	
+	@Test
+	public void shouldBuidCorrectOr() {
+		
+		Criteria criteria = Criteria.or(Criteria.where("foo").is("bar"),Criteria.where("x").is(true));
+
+		assertThat(criteria.getCriteriaObject())
+				.isEqualTo("{\"$or\":[{\"foo\":\"bar\"},{\"x\":true} ]}");
+
+	}
 }

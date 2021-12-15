@@ -146,6 +146,15 @@ public class Criteria implements CriteriaDefinition {
 	public static Criteria matchingDocumentStructure(MongoJsonSchema schema) {
 		return new Criteria().andDocumentStructureMatches(schema);
 	}
+	
+	/**
+	 * Static factory method to create a Criteria using the or operator of all the given criterions 
+	 * @param criterions 
+	 * @return
+	 */
+	public static Criteria or(Criteria... criterions) {
+		return new Criteria().orOperator(criterions);
+	}
 
 	/**
 	 * Static factory method to create a Criteria using the provided key
